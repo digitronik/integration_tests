@@ -19,6 +19,7 @@ from widgetastic_manageiq import (BreadCrumb,
                                   ProviderEntity,
                                   BaseNonInteractiveEntitiesView)
 
+from cfme.common.host_views import HostEntitiesView
 
 class ProviderDetailsToolBar(View):
     """
@@ -232,8 +233,8 @@ class ProviderNodesView(BaseLoggedInPage):
     """
     title = Text('//div[@id="main-content"]//h1')
     toolbar = View.nested(NodesToolBar)
-    entities = View.nested(View)  # left it for future
-
+    # entities = View.nested(View)  # left it for future
+    including_entities = View.include(HostEntitiesView, use_parent=True)
     @property
     def is_displayed(self):
         title = '{name} (All Managed Hosts)'.format(name=self.context['object'].name)
