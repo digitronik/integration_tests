@@ -19,7 +19,7 @@ from widgetastic_patternfly import (
 )
 
 from cfme.base.ui import BaseLoggedInPage
-from cfme.common import TagPageView, WidgetasticTaggable
+from cfme.common import TagPageView, WidgetasticTaggable, CollectionTaggable
 from cfme.exceptions import ItemNotFound
 from cfme.utils.appliance.implementations.ui import CFMENavigateStep, navigator, navigate_to
 from cfme.utils.appliance import BaseCollection, BaseEntity
@@ -125,7 +125,7 @@ class StorageManagePoliciesView(StorageManagerView):
             self.breadcrumb.active_location == "'Storage Manager' Policy Assignment")
 
 
-class BlockManagerCollection(BaseCollection):
+class BlockManagerCollection(BaseCollection, CollectionTaggable):
     """Collection object [block manager] for the :py:class:'cfme.storage.manager'"""
 
     def __init__(self, appliance):
@@ -139,7 +139,7 @@ class BlockManagerCollection(BaseCollection):
         return StorageManager(self, name, provider)
 
 
-class ObjectManagerCollection(BaseCollection):
+class ObjectManagerCollection(BaseCollection, CollectionTaggable):
     """Collection object [object manager] for the :py:class:'cfme.storage.manager'"""
 
     def __init__(self, appliance):

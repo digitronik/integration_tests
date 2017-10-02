@@ -43,3 +43,11 @@ def test_manager_navigation(collection_manager):
     assert view.is_displayed
 
     manager.refresh()
+
+
+@pytest.mark.tier(3)
+@pytest.mark.uncollectif(lambda provider: not provider.one_of(OpenStackProvider))
+def test_manager_add_remove_tag(collection_manager):
+    collection, manager = collection_manager
+    collection.add_tag([manager], 'Department', 'Communication')
+    collection.remove_tag([manager], 'Department', 'Communication')

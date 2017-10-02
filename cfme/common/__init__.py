@@ -192,7 +192,27 @@ class TagPageView(BaseLoggedInPage):
         )
 
 
-class WidgetasticTaggable(object):
+class TaggableActions(object):
+    def _tags_action(self, view, cancel, reset):
+        """ Actions on edit tags page
+
+        Args:
+            view: View to use these actions(tag view)
+            cancel: Set True to cancel all changes, will redirect to details page
+            reset: Set True to reset all changes, edit tag page should be opened
+        """
+        if reset:
+            view.form.reset.click()
+            view.flash.assert_message('All changes have been reset')
+        if cancel:
+            view.form.cancel.click()
+            view.flash.assert_success_message('Tag Edit was cancelled by the user')
+        if not reset and not cancel:
+            view.form.save.click()
+            view.flash.assert_success_message('Tag edits were successfully saved')
+
+
+class WidgetasticTaggable(TaggableActions):
     """
     This class can be inherited by any class that honors tagging.
     Class should have following
@@ -304,23 +324,111 @@ class WidgetasticTaggable(object):
             return []
         return filter(None, re.split(r'(.*?):\s*\s+\s?', tags))
 
-    def _tags_action(self, view, cancel, reset):
-        """ Actions on edit tags page
+
+class CollectionTaggable(TaggableActions):
+    """
+    This class can be inherited by any collection class that honors tagging.
+    Class should have following
+
+    * 'get_entity' method in All Page or row checking method as per used in'collection_edit_tag'.
+    * 'All' Page navigation register with 'All'
+    * suggestion: pass positional argument to all methods
+
+    This class provides functionality to assign and unassigned tags for collection.
+    """
+    def collection_edit_tag(self, collection_objects):
+        view = navigate_to(self, 'All')
+        for obj in collection_objects:
+            try:
+                view.entities.get_entity(by_name=obj.name, surf_pages=True).check()
+            except AttributeError:
+                row = view.paginator.find_row_on_pages(view.entities.table, Name=obj.name)
+                row[0].check()
+
+        view.toolbar.policy.item_select('Edit Tags')
+        return view.browser.create_view(TagPageView)
+
+    def add_tag(self, collection_objects, category=None, tag=None, cancel=False, reset=False):
+        """ Add tag to collection objects
 
         Args:
-            view: View to use these actions(tag view)
-            cancel: Set True to cancel all changes, will redirect to details page
-            reset: Set True to reset all changes, edit tag page should be opened
+            collection_objects: objects (list)
+            category: category(str)
+            tag: tag(str) or Tag object
+            cancel: set True to cancel tag assigment
+            reset: set True to reset already set up tag
         """
-        if reset:
-            view.form.reset.click()
-            view.flash.assert_message('All changes have been reset')
-        if cancel:
-            view.form.cancel.click()
-            view.flash.assert_success_message('Tag Edit was cancelled by the user')
-        if not reset and not cancel:
-            view.form.save.click()
-            view.flash.assert_success_message('Tag edits were successfully saved')
+        view = self.collection_edit_tag(collection_objects)
+
+        if isinstance(tag, Tag):
+            category = tag.category.display_name
+            tag = tag.display_name
+        # Handle nested view.form and where the view contains form widgets
+        try:
+            updated = view.form.fill({
+                "tag_category": '{} *'.format(category),
+                "tag_name": tag
+            })
+        except NoSuchElementException:
+            updated = view.form.fill({
+                "tag_category": category,
+                "tag_name": tag
+            })
+        # In case if field is not updated cancel the edition
+        if not updated:
+            cancel = True
+        self._tags_action(view, cancel, reset)
+
+    def add_tags(self, collection_objects, tags):
+        """Add multiple tags
+
+        Args:
+            collection_objects: objects (list)
+            tags: pass dict with category name as key, and tag as value,
+                 or pass list with tag objects
+        """
+        if isinstance(tags, dict):
+            for category, tag in tags.items():
+                self.add_tag(collection_objects, category=category, tag=tag)
+        elif isinstance(tags, (list, tuple)):
+            for tag in tags:
+                self.add_tag(collection_objects, tag=tag)
+
+    def remove_tag(self, collection_objects, category=None, tag=None, cancel=False, reset=False):
+        """ Remove tag of collection objects
+
+        Args:
+            collection_objects: objects (list)
+            category: category(str)
+            tag: tag(str) or Tag object
+            cancel: set True to cancel tag deletion
+            reset: set True to reset tag changes
+        """
+        view = self.collection_edit_tag(collection_objects)
+        if isinstance(tag, Tag):
+            category = tag.category.display_name
+            tag = tag.display_name
+        try:
+            row = view.form.tags.row(category="{} *".format(category), assigned_value=tag)
+        except RowNotFound:
+            row = view.form.tags.row(category=category, assigned_value=tag)
+        row[0].click()
+        self._tags_action(view, cancel, reset)
+
+    def remove_tags(self,collection_objects, tags):
+        """Remove multiple of tags
+
+        Args:
+            collection_objects: objects (list)
+            tags: pass dict with category name as key, and tag as value,
+                 or pass list with tag objects
+        """
+        if isinstance(tags, dict):
+            for category, tag in tags.items():
+                self.remove_tag(collection_objects, category=category, tag=tag)
+        elif isinstance(tags, (list, tuple)):
+            for tag in tags:
+                self.remove_tag(collection_objects, tag=tag)
 
 
 class SummaryMixin(object):
