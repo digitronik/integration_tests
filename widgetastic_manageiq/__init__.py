@@ -3,7 +3,7 @@ import atexit
 import json
 import math
 from collections import namedtuple
-from datetime import date
+from datetime import date, datetime
 from math import ceil
 from tempfile import NamedTemporaryFile
 
@@ -4356,3 +4356,152 @@ class InfraMappingTreeView(Widget):
             return False
         self._all_item_elements[value or self.selected_item].click()
         return True
+
+
+class DatePicker(Widget):
+    """Represents the Bootstrap DatePicker.
+
+      Args:
+        name: name of DatePicker
+        id: id of DatePicker
+
+    .. code-block:: python
+
+       date = DatePicker(name='miq_date_1')
+    """
+    TEXTBOX = ParametrizedLocator('.//*[{@id_attr}]')
+    DATE = ".//*[contains(@class, 'datepicker-days')]/table/tbody/tr/td"
+    MONTH = ".//*[contains(@class, 'datepicker-months')]/table/tbody/tr/td/*"
+    YEAR = ".//*[contains(@class, 'datepicker-years')]/table/tbody/tr/td/*"
+    DATE_MAPPING = {'dd': '%d', 'mm': '%m', 'MM': '%B', 'yy': '%y', 'yyyy': '%Y'}
+    prev_button = Text(".//*[contains(@class, 'prev')]")
+    next_button = Text(".//*[contains(@class, 'next')]")
+    date_picker_switch = Text(".//*[contains(@class, 'datepicker-switch')]")
+
+    def __init__(self, parent, name=None, id=None, logger=None):
+        """Create the widget"""
+        Widget.__init__(self, parent, logger=logger)
+        if name or id:
+            if name is not None:
+                id_attr = '@name={}'.format(quote(name))
+            elif id is not None:
+                id_attr = '@id={}'.format(quote(id))
+            self.id_attr = id_attr
+
+    @property
+    def value(self):
+        return self.parent_browser.get_attribute('value', self.TEXTBOX)
+
+    @property
+    def _active_date(self):
+        for el in self.browser.elements(self.DATE):
+            if bool(self.browser.classes(el) & {'active'}):
+                return el
+
+    def _select_date(self, dd):
+        for el in self.browser.elements(self.DATE):
+            if (not bool({'old', 'new'} & self.browser.classes(el))) and (int(el.text) == int(dd)):
+                el.click()
+                return True
+
+    def _select_month(self, month):
+        for el in self.browser.elements(self.MONTH):
+            if el.text == month:
+                el.click()
+                return True
+
+    def _select_year(self, year):
+        for yr in range(1, 10):
+            start_yr, end_yr = [int(item) for item in self.date_picker_switch.read().split('-')]
+            if start_yr <= int(year) <= end_yr:
+                for el in self.browser.elements(self.YEAR):
+                    if int(el.text) == int(year):
+                        el.click()
+                        return True
+            elif int(year) < start_yr:
+                self.prev_button.click()
+            elif int(year) > end_yr:
+                self.next_button.click()
+        else:
+            raise ValueError("Year not valid")
+
+    @property
+    def date_mapp(self):
+        if self.date_format:
+            date_fmt = self.date_format
+            for item in self.date_format.split('/'):
+                date_fmt = date_fmt.replace(item, self.DATE_MAPPING[item])
+            return date_fmt
+        else:
+            return None
+
+    def _select(self, value):
+        self.browser.click(self.TEXTBOX)
+        month = value.strftime("%b")
+        day = value.strftime("%d")
+        year = value.strftime("%Y")
+        sw_value = self.date_picker_switch.read().split(' ')
+
+        if (value.strftime("%B") not in sw_value) or (year not in sw_value):
+            self.date_picker_switch.click()
+            if year is not self.date_picker_switch.read:
+                self.date_picker_switch.click()
+                self._select_year(year)
+            self._select_month(month)
+        self._select_date(day)
+        return True
+
+    def read(self):
+        """read the selected date
+        Returns:
+            :py:class:`datetime.datetime` or `str`
+        """
+        if self.value == '' or not self.date_mapp:
+            return self.value
+        else:
+            return datetime.strptime(self.value, self.date_mapp)
+
+    def fill(self, value):
+        """Fill date to date box
+
+        Args:
+           value (datetime): datetime object.
+        Returns:
+            :py:class:`bool`
+        """
+        if isinstance(self.read(), datetime):
+            if value.date() == self.read().date():
+                return False
+
+        if not self.is_readonly:
+            self.parent_browser.clear(self.TEXTBOX)
+            date = datetime.strftime(value, self.date_mapp)
+            self.parent_browser.send_keys(date, self.TEXTBOX)
+            self._active_date.click()
+            return True
+        else:
+            return self._select(value)
+
+    @property
+    def is_displayed(self):
+        """widget displayed or not
+        Returns:
+            :py:class:`bool`
+        """
+        return self.parent_browser.is_displayed(self.TEXTBOX)
+
+    @property
+    def is_readonly(self):
+        """widget editable or not
+        Returns:
+            :py:class:`bool`
+        """
+        return bool(self.parent_browser.get_attribute('readonly', self.TEXTBOX))
+
+    @property
+    def date_format(self):
+        """widget date format
+        Returns:
+            :py:class:`str`
+        """
+        return self.parent_browser.get_attribute('data-date-format', self.TEXTBOX)

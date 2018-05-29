@@ -27,7 +27,7 @@ from cfme.utils.appliance.implementations.ui import navigator, CFMENavigateStep,
 from cfme.utils.blockers import BZ
 from cfme.utils.log import logger
 from widgetastic_manageiq import (ManageIQTree, Checkbox, AttributeValueForm, TimelinesView,
-                                  ParametrizedSummaryTable, SummaryFormItem)
+                                  ParametrizedSummaryTable, SummaryFormItem, DatePicker)
 from . import Server, Region, Zone, ZoneCollection
 
 
@@ -1263,6 +1263,7 @@ class SmartProxyAffinity(CFMENavigateStep):
             raise ZoneNotFound(
                 "No unique Zones with the description '{}'".format(self.obj.description))
 
+
 # Zone Add #
 class ZoneAddView(ZoneForm):
     add_button = Button('Add')
@@ -1320,6 +1321,9 @@ class ZoneDiagnosticsView(ConfigurationView):
     @View.nested
     class candugapcollection(Tab):  # noqa
         TAB_NAME = "C & U Gap Collection"
+        start_date = DatePicker(id='miq_date_1')
+        end_date = DatePicker(id='miq_date_2')
+        submit = Button(title='Submit')
 
     @property
     def is_displayed(self):
