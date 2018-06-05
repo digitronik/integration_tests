@@ -1,10 +1,10 @@
 import pytest
+import random
 
 from cfme.cloud.provider.azure import AzureProvider
 from cfme.cloud.provider.ec2 import EC2Provider
 from cfme.cloud.provider.gce import GCEProvider
 from cfme.cloud.provider.openstack import OpenStackProvider
-from cfme.exceptions import ManyEntitiesFound
 from cfme.utils.appliance.implementations.ui import navigate_to
 from cfme.utils.blockers import BZ
 from cfme.utils.version import LATEST
@@ -58,9 +58,7 @@ def test_download_pdf_summary(appliance, collection_type, provider):
     """ Download the summary details of specific object """
     collection = getattr(appliance.collections, collection_type)
     if collection.all():
-        random_obj = collection.all()[0].name
-        try:
-            obj = collection.instantiate(name=random_obj)
-            download_summary(obj)
-        except ManyEntitiesFound:
-            pass
+        obj = random.choice(collection.all())
+        download_summary(obj)
+    else:
+        pytest.skip('{} objects not available'.format(collection_type))
