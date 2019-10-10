@@ -195,7 +195,7 @@ def wait_pingable(mgmt_vm, wait=30):
         func_args=[mgmt_vm],
         fail_condition=None,
         delay=5,
-        num_sec=wait
+        timeout=wait
     )[0]
 
 

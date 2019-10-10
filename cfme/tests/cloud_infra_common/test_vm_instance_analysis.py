@@ -27,7 +27,7 @@ from cfme.utils.appliance.implementations.ui import navigate_to
 from cfme.utils.blockers import BZ
 from cfme.utils.conf import credentials
 from cfme.utils.log import logger
-from cfme.utils.net import find_pingable
+from cfme.utils.net import wait_pingable
 from cfme.utils.update import update
 from cfme.utils.virtual_machines import deploy_template
 from cfme.utils.wait import TimedOutError
@@ -311,11 +311,7 @@ def ssa_single_vm(request, local_setup_provider, enable_smartproxy_affinity, pro
         vm.mgmt.ensure_state(VmState.RUNNING)
 
         try:
-            connect_ip, _ = wait_for(find_pingable,
-                                     func_args=[vm.mgmt],
-                                     timeout="10m",
-                                     delay=5,
-                                     fail_condition=None)
+            connect_ip = wait_pingable(vm.mgmt, wait="10m")
         except TimedOutError:
             pytest.fail('Timed out waiting for pingable address on SSA VM')
 
